@@ -4,7 +4,6 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -14,8 +13,8 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.Face;
-import android.media.ImageReader;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -61,18 +60,18 @@ public class DisplayFragment extends Fragment {
     private CameraCaptureSession mCaptureSession;
     private CaptureRequest mPreviewRequest;
     private boolean testvar = true;
-    private ImageReader mImageReader;
 
     private CameraCaptureSession.CaptureCallback mCaptureCallback = new CameraCaptureSession.CaptureCallback() {
         @Override
-        public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request, CaptureResult partialResult) {
-            super.onCaptureProgressed(session, request, partialResult);
+        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
+            super.onCaptureCompleted(session, request, result);
             if (testvar) {
-                Log.d(TAG, String.valueOf(partialResult.get(CaptureResult.STATISTICS_FACE_DETECT_MODE)));
-                Face[] facesList = partialResult.get(CaptureResult.STATISTICS_FACES);
+                Face[] facesList = result.get(CaptureResult.STATISTICS_FACES);
                 if (facesList != null) {
                     Log.d(TAG, String.valueOf(facesList.length));
-                    testvar = false;
+                    if (facesList.length > 0) {
+                        testvar = false;
+                    }
                 }
             }
         }
@@ -131,14 +130,12 @@ public class DisplayFragment extends Fragment {
         SurfaceTexture texture = mBackgroundView.getSurfaceTexture();
         texture.setDefaultBufferSize(mBackgroundView.getWidth(), mBackgroundView.getHeight());
         Surface targetSurface = new Surface(texture);
-        mImageReader = ImageReader.newInstance(mBackgroundView.getWidth(), mBackgroundView.getHeight(), ImageFormat.JPEG, 2);
-        Surface readerSurface = mImageReader.getSurface();
 
         try {
             mPreviewRequestBuilder
                     = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             mPreviewRequestBuilder.addTarget(targetSurface);
-            mCameraDevice.createCaptureSession(Arrays.asList(targetSurface, readerSurface), new CameraCaptureSession.StateCallback() {
+            mCameraDevice.createCaptureSession(Arrays.asList(targetSurface), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(CameraCaptureSession session) {
                     if (null == mCameraDevice) {
@@ -146,7 +143,7 @@ public class DisplayFragment extends Fragment {
                     }
 
                     mCaptureSession = session;
-                    mPreviewRequestBuilder.set(CaptureRequest.STATISTICS_FACE_DETECT_MODE, CaptureRequest.STATISTICS_FACE_DETECT_MODE_OFF);
+                    mPreviewRequestBuilder.set(CaptureRequest.STATISTICS_FACE_DETECT_MODE, CameraMetadata.STATISTICS_FACE_DETECT_MODE_FULL);
                     mPreviewRequest = mPreviewRequestBuilder.build();
 
                     try {
@@ -194,7 +191,7 @@ public class DisplayFragment extends Fragment {
             cameraIdList = mCameraManager.getCameraIdList();
             for (String cameraId : cameraIdList) {
                 int lensFacing = mCameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.LENS_FACING);
-                if (lensFacing == CameraMetadata.LENS_FACING_FRONT) {
+                if (lensFacing == CameraMetadata.LENS_FACING_BACK) {
                     int[] faceDetectModes = mCameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES);
                     for (int faceDetectMode : faceDetectModes) {
                         if (CameraMetadata.STATISTICS_FACE_DETECT_MODE_SIMPLE == faceDetectMode) {
