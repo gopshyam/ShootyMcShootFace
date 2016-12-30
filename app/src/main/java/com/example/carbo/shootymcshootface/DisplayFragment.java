@@ -60,6 +60,8 @@ public class DisplayFragment extends Fragment {
     private CameraCaptureSession mCaptureSession;
     private CaptureRequest mPreviewRequest;
     private boolean testvar = true;
+    private Face[] mFacesList;
+    private Semaphore mFacesLock = new Semaphore(1);
 
     private CameraCaptureSession.CaptureCallback mCaptureCallback = new CameraCaptureSession.CaptureCallback() {
         @Override
@@ -68,9 +70,9 @@ public class DisplayFragment extends Fragment {
             if (testvar) {
                 Face[] facesList = result.get(CaptureResult.STATISTICS_FACES);
                 if (facesList != null) {
-                    Log.d(TAG, String.valueOf(facesList.length));
                     if (facesList.length > 0) {
-                        testvar = false;
+                        Log.d(TAG, String.valueOf(facesList[0].getScore()));
+                        mForegroundView.setAlpha(0.8f);
                     }
                 }
             }

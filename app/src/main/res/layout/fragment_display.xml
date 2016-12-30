@@ -5,22 +5,22 @@
     tools:context="com.example.carbo.shootymcshootface.DisplayFragment">
 
     <TextureView
+        android:id="@+id/background"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:id="@+id/background" />
+        android:layout_height="match_parent" />
 
     <SurfaceView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
         android:id="@+id/middle"
-        android:background="@color/black_overlay"
-        android:alpha="0.1"/>
-
-    <SurfaceView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:alpha="0.1"
+        android:background="@color/colorPrimary" />
+
+    <SurfaceView
         android:id="@+id/foreground"
-        android:background="@color/colorAccent"
-        android:alpha="0.1"/>
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.1"
+        android:background="@color/colorAccent" />
 
 </FrameLayout>
