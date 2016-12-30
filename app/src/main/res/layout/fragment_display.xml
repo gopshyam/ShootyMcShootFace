@@ -1,0 +1,26 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.carbo.shootymcshootface.DisplayFragment">
+
+    <TextureView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/background" />
+
+    <SurfaceView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/middle"
+        android:background="@color/black_overlay"
+        android:alpha="0.1"/>
+
+    <SurfaceView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/foreground"
+        android:background="@color/colorAccent"
+        android:alpha="0.1"/>
+
+</FrameLayout>
