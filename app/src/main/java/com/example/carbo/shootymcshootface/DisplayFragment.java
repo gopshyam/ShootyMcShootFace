@@ -16,7 +16,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
@@ -46,10 +45,8 @@ public class DisplayFragment extends Fragment {
 
     private static final String TAG = "DisplayFragment";
     private static final String CAMERA_NOT_FOUND = "CAMERA_NOT_FOUND";
-
     private CameraManager mCameraManager;
     private CameraDevice mCameraDevice;
-    private Handler mCameraOpenHandler;
     private Thread mStartOpenCameraThread;
     private TextureView mBackgroundView;
     private SurfaceView mMiddleView, mForegroundView;
@@ -59,9 +56,53 @@ public class DisplayFragment extends Fragment {
     private CaptureRequest.Builder mPreviewRequestBuilder;
     private CameraCaptureSession mCaptureSession;
     private CaptureRequest mPreviewRequest;
-    private static final int REQUEST_CAMERA_PERMISSION = 1;
+    private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
 
+        @Override
+        public void onOpened(@NonNull CameraDevice cameraDevice) {
+            // This method is called when the camera is opened.  We start camera preview here.
+            mCameraOpenCloseLock.release();
+            mCameraDevice = cameraDevice;
+            Log.d(TAG, "Camera Opened");
+            createCameraPreviewSession();
+        }
+
+        @Override
+        public void onDisconnected(@NonNull CameraDevice cameraDevice) {
+            mCameraOpenCloseLock.release();
+            cameraDevice.close();
+            mCameraDevice = null;
+        }
+
+        @Override
+        public void onError(@NonNull CameraDevice cameraDevice, int error) {
+            mCameraOpenCloseLock.release();
+            cameraDevice.close();
+            mCameraDevice = null;
+            Activity activity = getActivity();
+            if (null != activity) {
+                activity.finish();
+            }
+        }
+
+    };
     private OnFragmentInteractionListener mListener;
+
+    public DisplayFragment() {
+        // Required empty public constructor
+    }
+
+    /**
+     * Use this factory method to create a new instance of
+     * this fragment using the provided parameters.
+     *
+     * @return A new instance of fragment DisplayFragment.
+     */
+    // TODO: Rename and change types and number of parameters
+    public static DisplayFragment newInstance() {
+        DisplayFragment fragment = new DisplayFragment();
+        return fragment;
+    }
 
     private void createCameraPreviewSession() {
 
@@ -101,52 +142,6 @@ public class DisplayFragment extends Fragment {
         mPreviewRequestBuilder.addTarget(targetSurface);
     }
 
-    private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
-
-        @Override
-        public void onOpened(@NonNull CameraDevice cameraDevice) {
-            // This method is called when the camera is opened.  We start camera preview here.
-            mCameraOpenCloseLock.release();
-            mCameraDevice = cameraDevice;
-            createCameraPreviewSession();
-        }
-
-        @Override
-        public void onDisconnected(@NonNull CameraDevice cameraDevice) {
-            mCameraOpenCloseLock.release();
-            cameraDevice.close();
-            mCameraDevice = null;
-        }
-
-        @Override
-        public void onError(@NonNull CameraDevice cameraDevice, int error) {
-            mCameraOpenCloseLock.release();
-            cameraDevice.close();
-            mCameraDevice = null;
-            Activity activity = getActivity();
-            if (null != activity) {
-                activity.finish();
-            }
-        }
-
-    };
-
-    public DisplayFragment() {
-        // Required empty public constructor
-    }
-
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @return A new instance of fragment DisplayFragment.
-     */
-    // TODO: Rename and change types and number of parameters
-    public static DisplayFragment newInstance() {
-        DisplayFragment fragment = new DisplayFragment();
-        return fragment;
-    }
-
     private void startBackgroundThread() {
         mBackgroundThread = new HandlerThread("CameraBackground");
         mBackgroundThread.start();
@@ -167,14 +162,14 @@ public class DisplayFragment extends Fragment {
         }
     }
 
-    private String findCompatibleCamera() {
+    private void findCompatibleCamera() {
         //Get the cameraManager and find out camera stuff.
         String[] cameraIdList = new String[0];
         try {
             cameraIdList = mCameraManager.getCameraIdList();
             for (String cameraId : cameraIdList) {
                 int lensFacing = mCameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.LENS_FACING);
-                if (lensFacing == CameraMetadata.LENS_FACING_FRONT) {
+                if (lensFacing == CameraMetadata.LENS_FACING_BACK) {
                     int[] faceDetectModes = mCameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES);
                     for (int faceDetectMode : faceDetectModes) {
                         if (CameraMetadata.STATISTICS_FACE_DETECT_MODE_SIMPLE == faceDetectMode) {
@@ -186,14 +181,12 @@ public class DisplayFragment extends Fragment {
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
-        return CAMERA_NOT_FOUND;
+        return;
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        mCameraManager = (CameraManager) getActivity().getApplicationContext().getSystemService(Context.CAMERA_SERVICE);
     }
 
     @Override
@@ -235,6 +228,8 @@ public class DisplayFragment extends Fragment {
 
         startBackgroundThread();
 
+        mCameraManager = (CameraManager) getActivity().getApplicationContext().getSystemService(Context.CAMERA_SERVICE);
+
         mBackgroundView = (TextureView) getView().findViewById(R.id.background);
         mMiddleView = (SurfaceView) getView().findViewById(R.id.middle);
         mForegroundView = (SurfaceView) getView().findViewById(R.id.foreground);
@@ -242,11 +237,7 @@ public class DisplayFragment extends Fragment {
         mStartOpenCameraThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                String cameraId = findCompatibleCamera();
-                Message cameraIdMsg = Message.obtain();
-                cameraIdMsg.obj = cameraId;
-                cameraIdMsg.setTarget(mCameraOpenHandler);
-                cameraIdMsg.sendToTarget();
+                findCompatibleCamera();
             }
         });
         mStartOpenCameraThread.start();

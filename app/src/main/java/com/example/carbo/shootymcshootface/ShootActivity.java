@@ -7,6 +7,7 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.ActivityCompat.OnRequestPermissionsResultCallback;
 import android.support.v4.app.DialogFragment;
@@ -14,8 +15,7 @@ import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.support.v7.app.AppCompatCallback;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
@@ -51,6 +51,7 @@ public class ShootActivity extends AppCompatActivity implements DisplayFragment.
             }
         } else {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+            Log.d("Permission", "Permission received");
             getSupportFragmentManager().beginTransaction().replace(R.id.display_container, DisplayFragment.newInstance()).commit();
         }
     }
@@ -62,6 +63,40 @@ public class ShootActivity extends AppCompatActivity implements DisplayFragment.
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA},
                     REQUEST_CAMERA_PERMISSION);
         }
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        mContentView = findViewById(R.id.display_container);
+        hide();
+
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestCameraPermissions();
+        }
+
+        if (null == savedInstanceState) {
+            getSupportFragmentManager().beginTransaction().replace(R.id.display_container, DisplayFragment.newInstance()).commit();
+        }
+    }
+
+    private void hide() {
+        // Hide UI first
+        ActionBar actionBar = getSupportActionBar();
+        if (actionBar != null) {
+            actionBar.hide();
+        }
+
+        // Schedule a runnable to remove the status and navigation bar after a delay
+        Thread hideThread = new Thread(mHidePart2Runnable);
+        hideThread.start();
+    }
+
+    @Override
+    public void onFragmentInteraction(Uri uri) {
+        Toast.makeText(this.getApplicationContext(), uri.toString(), Toast.LENGTH_LONG);
     }
 
     public static class ConfirmationDialog extends DialogFragment {
@@ -91,37 +126,5 @@ public class ShootActivity extends AppCompatActivity implements DisplayFragment.
                             })
                     .create();
         }
-    }
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        requestCameraPermissions();
-
-        mContentView = findViewById(R.id.display_container);
-        hide();
-
-        if (null == savedInstanceState) {
-            //getSupportFragmentManager().beginTransaction().replace(R.id.display_container, DisplayFragment.newInstance()).commit();
-        }
-    }
-
-    private void hide() {
-        // Hide UI first
-        ActionBar actionBar = getSupportActionBar();
-        if (actionBar != null) {
-            actionBar.hide();
-        }
-
-        // Schedule a runnable to remove the status and navigation bar after a delay
-        Thread hideThread = new Thread(mHidePart2Runnable);
-        hideThread.start();
-    }
-
-    @Override
-    public void onFragmentInteraction(Uri uri) {
-        Toast.makeText(this.getApplicationContext(), uri.toString(), Toast.LENGTH_LONG);
     }
 }

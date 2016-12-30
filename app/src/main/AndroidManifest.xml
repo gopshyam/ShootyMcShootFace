@@ -13,14 +13,14 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity android:name=".ShootActivity"
-            android:screenOrientation="landscape">
+            android:screenOrientation="portrait">
         </activity>
         <activity
             android:name=".TitleScreenActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:label="@string/title_activity_title_screen"
-            android:theme="@style/FullscreenTheme"
-            android:screenOrientation="landscape">
+            android:screenOrientation="landscape"
+            android:theme="@style/FullscreenTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
