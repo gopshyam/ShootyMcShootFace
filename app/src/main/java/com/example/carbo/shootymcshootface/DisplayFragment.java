@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -12,6 +13,9 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.params.Face;
+import android.media.ImageReader;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -56,6 +60,24 @@ public class DisplayFragment extends Fragment {
     private CaptureRequest.Builder mPreviewRequestBuilder;
     private CameraCaptureSession mCaptureSession;
     private CaptureRequest mPreviewRequest;
+    private boolean testvar = true;
+    private ImageReader mImageReader;
+
+    private CameraCaptureSession.CaptureCallback mCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+        @Override
+        public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request, CaptureResult partialResult) {
+            super.onCaptureProgressed(session, request, partialResult);
+            if (testvar) {
+                Log.d(TAG, String.valueOf(partialResult.get(CaptureResult.STATISTICS_FACE_DETECT_MODE)));
+                Face[] facesList = partialResult.get(CaptureResult.STATISTICS_FACES);
+                if (facesList != null) {
+                    Log.d(TAG, String.valueOf(facesList.length));
+                    testvar = false;
+                }
+            }
+        }
+    };
+
     private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
 
         @Override
@@ -107,13 +129,16 @@ public class DisplayFragment extends Fragment {
     private void createCameraPreviewSession() {
 
         SurfaceTexture texture = mBackgroundView.getSurfaceTexture();
+        texture.setDefaultBufferSize(mBackgroundView.getWidth(), mBackgroundView.getHeight());
         Surface targetSurface = new Surface(texture);
+        mImageReader = ImageReader.newInstance(mBackgroundView.getWidth(), mBackgroundView.getHeight(), ImageFormat.JPEG, 2);
+        Surface readerSurface = mImageReader.getSurface();
 
         try {
             mPreviewRequestBuilder
                     = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             mPreviewRequestBuilder.addTarget(targetSurface);
-            mCameraDevice.createCaptureSession(Arrays.asList(targetSurface), new CameraCaptureSession.StateCallback() {
+            mCameraDevice.createCaptureSession(Arrays.asList(targetSurface, readerSurface), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(CameraCaptureSession session) {
                     if (null == mCameraDevice) {
@@ -121,10 +146,11 @@ public class DisplayFragment extends Fragment {
                     }
 
                     mCaptureSession = session;
-                    mPreviewRequestBuilder.set(CaptureRequest.STATISTICS_FACE_DETECT_MODE, CaptureRequest.STATISTICS_FACE_DETECT_MODE_SIMPLE);
+                    mPreviewRequestBuilder.set(CaptureRequest.STATISTICS_FACE_DETECT_MODE, CaptureRequest.STATISTICS_FACE_DETECT_MODE_OFF);
                     mPreviewRequest = mPreviewRequestBuilder.build();
+
                     try {
-                        mCaptureSession.setRepeatingRequest(mPreviewRequest, null, mBackgroundHandler);
+                        mCaptureSession.setRepeatingRequest(mPreviewRequest, mCaptureCallback, mBackgroundHandler);
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
                     }
@@ -139,7 +165,6 @@ public class DisplayFragment extends Fragment {
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
-        mPreviewRequestBuilder.addTarget(targetSurface);
     }
 
     private void startBackgroundThread() {
@@ -169,7 +194,7 @@ public class DisplayFragment extends Fragment {
             cameraIdList = mCameraManager.getCameraIdList();
             for (String cameraId : cameraIdList) {
                 int lensFacing = mCameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.LENS_FACING);
-                if (lensFacing == CameraMetadata.LENS_FACING_BACK) {
+                if (lensFacing == CameraMetadata.LENS_FACING_FRONT) {
                     int[] faceDetectModes = mCameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES);
                     for (int faceDetectMode : faceDetectModes) {
                         if (CameraMetadata.STATISTICS_FACE_DETECT_MODE_SIMPLE == faceDetectMode) {
