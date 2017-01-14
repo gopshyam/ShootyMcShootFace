@@ -2,12 +2,12 @@ package com.example.carbo.shootymcshootface;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.os.Handler;
-import android.view.MotionEvent;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.Button;
 
 /**
  * An example full-screen activity that shows and hides the system UI (i.e.
@@ -32,6 +32,13 @@ public class TitleScreenActivity extends AppCompatActivity {
      */
     private static final int UI_ANIMATION_DELAY = 300;
     private final Handler mHideHandler = new Handler();
+    private final Handler mDisplayHandler = new Handler();
+    private final Runnable mDisplayRunnable = new Runnable() {
+        @Override
+        public void run() {
+            startDisplayActivity();
+        }
+    };
     private View mContentView;
     private final Runnable mHidePart2Runnable = new Runnable() {
         @SuppressLint("InlinedApi")
@@ -51,15 +58,7 @@ public class TitleScreenActivity extends AppCompatActivity {
         }
     };
     private View mControlsView;
-
-    private final Handler mDisplayHandler = new Handler();
-
-    private final Runnable mDisplayRunnable = new Runnable() {
-        @Override
-        public void run() {
-            startDisplayActivity();
-        }
-    };
+    private Button mGoogleVisionButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,6 +68,15 @@ public class TitleScreenActivity extends AppCompatActivity {
 
         mControlsView = findViewById(R.id.fullscreen_content_controls);
         mContentView = findViewById(R.id.fullscreen_content);
+        mGoogleVisionButton = (Button) findViewById(R.id.google_vision_button);
+
+        View.OnClickListener googleVisionButtonClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startDisplayActivityGoogleVision();
+            }
+        };
+        mGoogleVisionButton.setOnClickListener(googleVisionButtonClickListener);
 
         // Set up the user interaction to manually show or hide the system UI.
         mContentView.setOnClickListener(new View.OnClickListener() {
@@ -101,6 +109,12 @@ public class TitleScreenActivity extends AppCompatActivity {
     private void delayedSwitchActivity(int delayMillis) {
         mDisplayHandler.removeCallbacks(mDisplayRunnable);
         mDisplayHandler.postDelayed(mDisplayRunnable, delayMillis);
+    }
+
+    private void startDisplayActivityGoogleVision() {
+        Intent shootActivityIntent = new Intent(this, ShootActivity.class);
+        shootActivityIntent.putExtra(Intent.EXTRA_REFERRER_NAME, "Google_Vision");
+        startActivity(shootActivityIntent);
     }
 
     private void startDisplayActivity(){

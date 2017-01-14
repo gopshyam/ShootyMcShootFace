@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -19,10 +20,11 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
-public class ShootActivity extends AppCompatActivity implements DisplayFragment.OnFragmentInteractionListener, OnRequestPermissionsResultCallback {
+public class ShootActivity extends AppCompatActivity implements DisplayFragment.OnFragmentInteractionListener, GoogleVisionFragment.OnFragmentInteractionListener, OnRequestPermissionsResultCallback {
 
     private static final int REQUEST_CAMERA_PERMISSION = 1;
     private static final String FRAGMENT_DIALOG = "dialog";
+    private boolean mGoogleVisionEnabled = false;
 
     private View mContentView;
 
@@ -52,6 +54,14 @@ public class ShootActivity extends AppCompatActivity implements DisplayFragment.
         } else {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
             Log.d("Permission", "Permission received");
+            showCameraView();
+        }
+    }
+
+    private void showCameraView() {
+        if (mGoogleVisionEnabled) {
+            getSupportFragmentManager().beginTransaction().replace(R.id.display_container, GoogleVisionFragment.newInstance()).commit();
+        } else {
             getSupportFragmentManager().beginTransaction().replace(R.id.display_container, DisplayFragment.newInstance()).commit();
         }
     }
@@ -70,6 +80,12 @@ public class ShootActivity extends AppCompatActivity implements DisplayFragment.
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        Intent callingIntent = getIntent();
+        String referrerNameString = callingIntent.getStringExtra(Intent.EXTRA_REFERRER_NAME);
+        if (referrerNameString != null && referrerNameString.equals("Google_Vision")) {
+            mGoogleVisionEnabled = true;
+        }
+
         mContentView = findViewById(R.id.display_container);
         hide();
 
@@ -78,7 +94,7 @@ public class ShootActivity extends AppCompatActivity implements DisplayFragment.
         }
 
         if (null == savedInstanceState) {
-            getSupportFragmentManager().beginTransaction().replace(R.id.display_container, DisplayFragment.newInstance()).commit();
+            showCameraView();
         }
     }
 
