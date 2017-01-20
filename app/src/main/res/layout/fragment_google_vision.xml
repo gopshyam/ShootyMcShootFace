@@ -5,8 +5,39 @@
     tools:context="com.example.carbo.shootymcshootface.GoogleVisionFragment">
 
     <SurfaceView
-        android:id="@+id/gv_background"
+        android:id="@+id/background"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <SurfaceView
+        android:id="@+id/foreground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"></SurfaceView>
+
+    <ImageView
+        android:id="@+id/bullet_image"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:src="@drawable/bullet_transparent"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/crosshair"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:src="@drawable/crosshair_transparent" />
+
+    <ImageView
+        android:id="@+id/gun_image"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:src="@drawable/scam_gun" />
+
+    <SurfaceView
+        android:id="@+id/tint_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.0"
+        android:background="@color/colorAccent" />
 
 </FrameLayout>
