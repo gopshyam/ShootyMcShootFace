@@ -21,6 +21,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.google.android.gms.vision.CameraSource;
 import com.google.android.gms.vision.Detector;
@@ -61,8 +62,9 @@ public class GoogleVisionFragment extends Fragment {
     private ImageView mBulletImage;
     private View.OnTouchListener mTouchListener;
     private ObjectAnimator mBulletFirePropAnimation;
-    private AnimatorSet mTintAnimatorSet, mFireAnimatorSet;
+    private AnimatorSet mTintAnimatorSet, mFireAnimatorSet, mHudTextAnimatorSet;
     private ImageView mCrosshair;
+    private TextView mHudTextView;
     private int mWidth, mHeight;
 
     public GoogleVisionFragment() {
@@ -106,10 +108,7 @@ public class GoogleVisionFragment extends Fragment {
         return inflater.inflate(R.layout.fragment_google_vision, container, false);
     }
 
-    @Override
-    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
+    private void InitializeViewObjects(View view) {
         mBackgroundView = (SurfaceView) view.findViewById(R.id.background);
         mBackgroundView.getHolder().addCallback(new BackGroundSurfaceCallback());
 
@@ -127,6 +126,14 @@ public class GoogleVisionFragment extends Fragment {
         mBulletImage.setY(1300);
 
         mCrosshair = (ImageView) view.findViewById(R.id.crosshair);
+
+        mHudTextView = (TextView) view.findViewById(R.id.hud_text);
+    }
+
+    @Override
+    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        InitializeViewObjects(view);
     }
 
     private void setupAnimations() {
@@ -168,7 +175,6 @@ public class GoogleVisionFragment extends Fragment {
         });
 
         //Animation for firing a gun
-
         ObjectAnimator gunRotateClockwise = ObjectAnimator.ofPropertyValuesHolder(mGunImage,
                 PropertyValuesHolder.ofFloat(View.ROTATION, RECOIL_ROTATION));
         gunRotateClockwise.setDuration(50);
@@ -196,6 +202,53 @@ public class GoogleVisionFragment extends Fragment {
 
         mTintAnimatorSet = new AnimatorSet();
         mTintAnimatorSet.play(tintFadeInAnimation).before(tintFadeOutAnimation);
+
+        //Utility Animation for showing text on the HUD.
+        PropertyValuesHolder textFadeIn = PropertyValuesHolder.ofFloat(View.ALPHA, 0.85f);
+        PropertyValuesHolder textFadeOut = PropertyValuesHolder.ofFloat(View.ALPHA, 0.0f);
+        PropertyValuesHolder textMoveUpAnimationY = PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, mHudTextView.getY());
+        PropertyValuesHolder textIncreaseSize = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1.0f);
+
+        ObjectAnimator textMoveUpAnimation = ObjectAnimator.ofPropertyValuesHolder(mHudTextView, textMoveUpAnimationY, textFadeIn, textIncreaseSize);
+        ObjectAnimator textFadeOutAnimation = ObjectAnimator.ofPropertyValuesHolder(mHudTextView, textFadeOut);
+        textMoveUpAnimation.setDuration(ANIMATION_DURATION * 3);
+        textFadeOutAnimation.setDuration(ANIMATION_DURATION * 2);
+
+        mHudTextAnimatorSet = new AnimatorSet();
+        mHudTextAnimatorSet.play(textFadeOutAnimation).after(textMoveUpAnimation.getDuration() * 5).after(textMoveUpAnimation);
+        mHudTextAnimatorSet.addListener(new Animator.AnimatorListener() {
+            @Override
+            public void onAnimationStart(Animator animation) {
+                mHudTextView.setVisibility(View.VISIBLE);
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                mHudTextView.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                mHudTextView.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onAnimationRepeat(Animator animation) {
+
+            }
+        });
+    }
+
+    private void showHudText(String message) {
+        if (mHudTextAnimatorSet.isStarted()) {
+            mHudTextAnimatorSet.cancel();
+        }
+        mHudTextView.setText(message);
+        mHudTextView.setY(mHeight / 4.0f);
+        mHudTextView.setScaleY(0.5f);
+        mHudTextView.setAlpha(0.0f);
+        mHudTextAnimatorSet.start();
+
     }
 
     private void checkShotResult() {
@@ -212,6 +265,7 @@ public class GoogleVisionFragment extends Fragment {
             if (faceRect.contains(mWidth / 2, mHeight / 2)) {
                 //The shot was successful
                 mTintAnimatorSet.start();
+                showHudText("Good Shot!");
             }
         }
     }
@@ -381,6 +435,7 @@ public class GoogleVisionFragment extends Fragment {
             setupAnimations();
             createCameraSource();
             startCameraPreview();
+            showHudText("Shoot someone in the face :)");
         }
 
         @Override
