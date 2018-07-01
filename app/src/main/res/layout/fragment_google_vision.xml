@@ -12,7 +12,14 @@
     <SurfaceView
         android:id="@+id/foreground"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"></SurfaceView>
+        android:layout_height="match_parent" />
+
+    <ImageView
+        android:id="@+id/skull_overlay"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:src="@drawable/skull_and_bones"
+        android:visibility="gone" />
 
     <ImageView
         android:id="@+id/bullet_image"
@@ -39,5 +46,17 @@
         android:layout_height="match_parent"
         android:alpha="0.0"
         android:background="@color/colorAccent" />
+
+    <TextView
+        android:id="@+id/hud_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="25dp"
+        android:background="#5DDD"
+        android:text="@string/hud_text_default"
+        android:textAlignment="center"
+        android:textAllCaps="true"
+        android:textColor="@android:color/white"
+        android:textSize="25sp" />
 
 </FrameLayout>
