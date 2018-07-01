@@ -79,12 +79,13 @@ public class TitleScreenActivity extends AppCompatActivity {
         mGoogleVisionButton.setOnClickListener(googleVisionButtonClickListener);
 
         // Set up the user interaction to manually show or hide the system UI.
-        mContentView.setOnClickListener(new View.OnClickListener() {
+        /*mContentView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 delayedSwitchActivity(100);
             }
-        });
+        });*/
+        mContentView.setOnClickListener(googleVisionButtonClickListener);
     }
 
     @Override

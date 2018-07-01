@@ -32,6 +32,7 @@ import com.google.android.gms.vision.face.FaceDetector;
 
 import java.io.IOException;
 import java.util.Hashtable;
+import java.util.Map;
 
 
 /**
@@ -60,12 +61,15 @@ public class GoogleVisionFragment extends Fragment {
     private SurfaceView mTintView;
     private ImageView mGunImage;
     private ImageView mBulletImage;
+    private ImageView mSkullOverlay;
     private View.OnTouchListener mTouchListener;
     private ObjectAnimator mBulletFirePropAnimation;
     private AnimatorSet mTintAnimatorSet, mFireAnimatorSet, mHudTextAnimatorSet;
     private ImageView mCrosshair;
     private TextView mHudTextView;
     private int mWidth, mHeight;
+    private int lastShotFace;
+    private FaceFeatures targetFeatures;
 
     public GoogleVisionFragment() {
         // Required empty public constructor
@@ -108,6 +112,46 @@ public class GoogleVisionFragment extends Fragment {
         return inflater.inflate(R.layout.fragment_google_vision, container, false);
     }
 
+    @Override
+    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        InitializeViewObjects(view);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mSurfaceAvailable) {
+            createCameraSource();
+            startCameraPreview();
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mCameraSource.stop();
+        mCameraSource.release();
+    }
+
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+        if (context instanceof OnFragmentInteractionListener) {
+            mListener = (OnFragmentInteractionListener) context;
+        } else {
+            throw new RuntimeException(context.toString()
+                    + " must implement OnFragmentInteractionListener");
+        }
+    }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        mFaceDetector.release();
+        mListener = null;
+    }
+
     private void InitializeViewObjects(View view) {
         mBackgroundView = (SurfaceView) view.findViewById(R.id.background);
         mBackgroundView.getHolder().addCallback(new BackGroundSurfaceCallback());
@@ -128,12 +172,8 @@ public class GoogleVisionFragment extends Fragment {
         mCrosshair = (ImageView) view.findViewById(R.id.crosshair);
 
         mHudTextView = (TextView) view.findViewById(R.id.hud_text);
-    }
 
-    @Override
-    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        InitializeViewObjects(view);
+        mSkullOverlay = (ImageView) view.findViewById(R.id.skull_overlay);
     }
 
     private void setupAnimations() {
@@ -252,56 +292,17 @@ public class GoogleVisionFragment extends Fragment {
     }
 
     private void checkShotResult() {
-        Log.e("RES", "func called");
         for (Hashtable.Entry<Integer, Face> entry : mFaceHashTable.entrySet()) {
             Face face = entry.getValue();
-            PointF facePosition = transformPreviewToGlobal(face.getPosition());
-            float faceWidth = face.getWidth() * mWidth / PREVIEW_WIDTH;
-            float faceHeight = face.getHeight() * mHeight / PREVIEW_HEIGHT;
-            Rect faceRect = new Rect((int) facePosition.x, (int) facePosition.y, (int) (facePosition.x + faceWidth), (int) (facePosition.y + faceHeight));
+            Rect faceRect = getFaceRect(face);
 
-            Log.e("Shot fired", facePosition.toString() + " " + faceRect.toString() + " " + String.valueOf(mWidth));
+            Log.e("Shot fired", faceRect.toString() + " " + String.valueOf(mWidth));
 
             if (faceRect.contains(mWidth / 2, mHeight / 2)) {
                 //The shot was successful
-                mTintAnimatorSet.start();
-                showHudText("Good Shot!");
+                ShotSuccessCallback(entry.getKey(), face);
             }
         }
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (mSurfaceAvailable) {
-            createCameraSource();
-            startCameraPreview();
-        }
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        mCameraSource.stop();
-        mCameraSource.release();
-    }
-
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        if (context instanceof OnFragmentInteractionListener) {
-            mListener = (OnFragmentInteractionListener) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnFragmentInteractionListener");
-        }
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
-        mFaceDetector.release();
-        mListener = null;
     }
 
     private void startCameraPreview() {
@@ -319,9 +320,11 @@ public class GoogleVisionFragment extends Fragment {
 
     private void createCameraSource() {
         mFaceDetector = new FaceDetector.Builder(getActivity().getApplicationContext())
-                .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS)
+                .setClassificationType(FaceDetector.NO_CLASSIFICATIONS)
+                .setLandmarkType(FaceDetector.ALL_LANDMARKS)
+                .setProminentFaceOnly(true)
                 .setTrackingEnabled(true)
-                .setMode(FaceDetector.FAST_MODE)
+                .setMode(FaceDetector.ACCURATE_MODE)
                 .build();
         mFaceDetector.setProcessor(new MultiProcessor.Builder<>(new GraphicFaceTrackerFactory()).build());
 
@@ -356,10 +359,12 @@ public class GoogleVisionFragment extends Fragment {
 
     private void updateFace(Face face, int mFaceId) {
         mFaceHashTable.put(mFaceId, face);
-        Log.e("Face Detected", String.valueOf(face.getPosition().toString()));
+        if (mFaceId == lastShotFace) {
+            //Log.e("Face Detected", String.valueOf(face.getPosition().toString()));
+        }
     }
 
-    public PointF transformPreviewToGlobal(float x, float y) {
+    public PointF transformFacePositionToGlobal(float x, float y) {
         float heightScale = mHeight / PREVIEW_HEIGHT;
         float widthScale = mWidth / PREVIEW_WIDTH;
 
@@ -368,8 +373,47 @@ public class GoogleVisionFragment extends Fragment {
         return new PointF(x * widthScale, y * heightScale);
     }
 
-    public PointF transformPreviewToGlobal(PointF point) {
-        return transformPreviewToGlobal(point.x, point.y);
+    public PointF transformFacePositionToGlobal(PointF point) {
+        return transformFacePositionToGlobal(point.x, point.y);
+    }
+
+    private Rect getFaceRect(Face face) {
+        PointF facePosition = transformFacePositionToGlobal(face.getPosition());
+        float faceWidth = face.getWidth() * mWidth / PREVIEW_WIDTH;
+        float faceHeight = face.getHeight() * mHeight / PREVIEW_HEIGHT;
+        Rect faceRect = new Rect((int) facePosition.x, (int) facePosition.y, (int) (facePosition.x + faceWidth), (int) (facePosition.y + faceHeight));
+        return faceRect;
+    }
+
+    private void ShotSuccessCallback(int key, Face face) {
+        lastShotFace = key;
+        mTintAnimatorSet.start();
+        showHudText("Good Shot!");
+        checkLandmarks(face);
+        Map<Integer, Float> featureList = new Hashtable<>();
+        //drawOverlay(face);
+    }
+
+    private void checkLandmarks(Face face) {
+        if (targetFeatures == null) {
+            targetFeatures = new FaceFeatures(face);
+            showHudText("Target Face Stored");
+        } else {
+            FaceFeatures currentFace = new FaceFeatures(face);
+            if (targetFeatures.compareFace(currentFace)) {
+                showHudText("HIT!");
+            } else {
+                showHudText("MISS!");
+            }
+        }
+    }
+
+    private void drawOverlay(Face face) {
+        Log.d(TAG, "This function should put a skull overlay around the face that was past");
+        PointF globalPosition = transformFacePositionToGlobal(face.getPosition());
+        mSkullOverlay.setX(globalPosition.x);
+        mSkullOverlay.setY(globalPosition.y);
+        mSkullOverlay.setVisibility(View.VISIBLE);
     }
 
     /**

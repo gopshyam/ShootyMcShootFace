@@ -10,4 +10,5 @@
     <string name="begin_text">TOUCH SCREEN TO\nBEGIN</string>
     <string name="request_camera_permission">This app needs camera permissions</string>
     <string name="google_vision_select">Try out Google Vision API</string>
+    <string name="hud_text_default">Shoot someone in the face!</string>
 </resources>
